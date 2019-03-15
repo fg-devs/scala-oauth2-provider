@@ -5,7 +5,7 @@ import java.util.Date
 /**
  * Provide accessing to data storage for using OAuth 2.0.
  */
-trait DataHandler[U] extends AuthorizationHandler[U] with ProtectedResourceHandler[U]
+trait DataHandler[U, A <: AuthInfo[U]] extends AuthorizationHandler[U, A] with ProtectedResourceHandler[U, A]
 
 /**
  * Access token
@@ -29,6 +29,12 @@ case class AccessToken(token: String, refreshToken: Option[String], scope: Optio
   }
 }
 
+object AuthInfo {
+  def apply[U](user: U, clientId: Option[String], scope: Option[String], redirectUri: Option[String]): DefaultAuthInfo[U] = {
+    DefaultAuthInfo(user, clientId, scope, redirectUri)
+  }
+}
+
 /**
  * Authorized information
  *
@@ -37,4 +43,19 @@ case class AccessToken(token: String, refreshToken: Option[String], scope: Optio
  * @param scope Inform the client of the scope of the access token issued.
  * @param redirectUri This value is used by Authorization Code Grant.
  */
-case class AuthInfo[+U](user: U, clientId: Option[String], scope: Option[String], redirectUri: Option[String])
+trait AuthInfo[+U] {
+  def user: U
+  def clientId: Option[String]
+  def scope: Option[String]
+  def redirectUri: Option[String]
+}
+
+/**
+ * Default Authorized information
+ *
+ * @param user        Authorized user which is registered on system.
+ * @param clientId    Using client id which is registered on system.
+ * @param scope       Inform the client of the scope of the access token issued.
+ * @param redirectUri This value is used by Authorization Code Grant.
+ */
+case class DefaultAuthInfo[+U](user: U, clientId: Option[String], scope: Option[String], redirectUri: Option[String]) extends AuthInfo[U]

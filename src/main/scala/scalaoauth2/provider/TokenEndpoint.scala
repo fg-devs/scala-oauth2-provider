@@ -5,7 +5,7 @@ import scala.concurrent.{ ExecutionContext, Future }
 trait TokenEndpoint {
   val handlers = Map.empty[String, GrantHandler]
 
-  def handleRequest[U](request: AuthorizationRequest, handler: AuthorizationHandler[U])(implicit ctx: ExecutionContext): Future[Either[OAuthError, GrantHandlerResult[U]]] = try {
+  def handleRequest[U, A <: AuthInfo[U]](request: AuthorizationRequest, handler: AuthorizationHandler[U, A])(implicit ctx: ExecutionContext): Future[Either[OAuthError, GrantHandlerResult[U, A]]] = try {
     val grantType = request.grantType
     val grantHandler = () => handlers.getOrElse(grantType, throw new UnsupportedGrantType(s"$grantType is not supported"))
 

@@ -33,7 +33,7 @@ class ImplicitSpec extends FlatSpec with ScalaFutures with OptionValues {
         Future.successful(result)
       }
 
-      override def createAccessToken(authInfo: AuthInfo[User]): Future[AccessToken] =
+      override def createAccessToken(authInfo: DefaultAuthInfo[User]): Future[AccessToken] =
         Future.successful(AccessToken("token1", Some("refresh_token"), Some("all"), Some(3600), new Date()))
 
     })

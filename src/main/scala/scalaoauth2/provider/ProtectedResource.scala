@@ -6,7 +6,7 @@ trait ProtectedResource {
 
   val fetchers = Seq(AuthHeader, RequestParameter)
 
-  def handleRequest[U](request: ProtectedResourceRequest, handler: ProtectedResourceHandler[U])(implicit ctx: ExecutionContext): Future[Either[OAuthError, AuthInfo[U]]] = try {
+  def handleRequest[U, A <: AuthInfo[U]](request: ProtectedResourceRequest, handler: ProtectedResourceHandler[U, A])(implicit ctx: ExecutionContext): Future[Either[OAuthError, A]] = try {
     fetchers.find { fetcher =>
       fetcher.matches(request)
     }.map { fetcher =>

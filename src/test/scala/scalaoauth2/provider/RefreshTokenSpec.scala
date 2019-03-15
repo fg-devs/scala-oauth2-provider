@@ -15,10 +15,10 @@ class RefreshTokenSpec extends FlatSpec with ScalaFutures with OptionValues {
     val clientCred = request.parseClientCredential.fold[Option[ClientCredential]](None)(_.fold(_ => None, c => Some(c)))
     val f = refreshToken.handleRequest(clientCred, request, new MockDataHandler() {
 
-      override def findAuthInfoByRefreshToken(refreshToken: String): Future[Option[AuthInfo[User]]] =
+      override def findAuthInfoByRefreshToken(refreshToken: String): Future[Option[DefaultAuthInfo[User]]] =
         Future.successful(Some(AuthInfo(user = MockUser(10000, "username"), clientId = Some("clientId1"), scope = None, redirectUri = None)))
 
-      override def refreshAccessToken(authInfo: AuthInfo[User], refreshToken: String): Future[AccessToken] = Future.successful(AccessToken("token1", Some(refreshToken), None, Some(3600), new java.util.Date()))
+      override def refreshAccessToken(authInfo: DefaultAuthInfo[User], refreshToken: String): Future[AccessToken] = Future.successful(AccessToken("token1", Some(refreshToken), None, Some(3600), new java.util.Date()))
 
     })
 

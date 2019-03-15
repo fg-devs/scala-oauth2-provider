@@ -2,8 +2,8 @@ package scalaoauth2.provider
 
 import scala.concurrent.{ ExecutionContext, Future }
 
-case class GrantHandlerResult[U](
-  authInfo: AuthInfo[U],
+case class GrantHandlerResult[U, A <: AuthInfo[U]](
+  authInfo: A,
   tokenType: String,
   accessToken: String,
   expiresIn: Option[Long],
@@ -19,12 +19,12 @@ trait GrantHandler {
    */
   def clientCredentialRequired = true
 
-  def handleRequest[U](maybeValidatedClientCred: Option[ClientCredential], request: AuthorizationRequest, authorizationHandler: AuthorizationHandler[U])(implicit ctx: ExecutionContext): Future[GrantHandlerResult[U]]
+  def handleRequest[U, A <: AuthInfo[U]](maybeValidatedClientCred: Option[ClientCredential], request: AuthorizationRequest, authorizationHandler: AuthorizationHandler[U, A])(implicit ctx: ExecutionContext): Future[GrantHandlerResult[U, A]]
 
   /**
    * Returns valid access token.
    */
-  protected def issueAccessToken[U](handler: AuthorizationHandler[U], authInfo: AuthInfo[U])(implicit ctx: ExecutionContext): Future[GrantHandlerResult[U]] = {
+  protected def issueAccessToken[U, A <: AuthInfo[U]](handler: AuthorizationHandler[U, A], authInfo: A)(implicit ctx: ExecutionContext): Future[GrantHandlerResult[U, A]] = {
     handler.getStoredAccessToken(authInfo).flatMap {
       case Some(token) if shouldRefreshAccessToken(token) => token.refreshToken.map {
         handler.refreshAccessToken(authInfo, _)
@@ -36,9 +36,9 @@ trait GrantHandler {
     }.map(createGrantHandlerResult(authInfo, _))
   }
 
-  protected def shouldRefreshAccessToken(token: AccessToken) = token.isExpired
+  protected def shouldRefreshAccessToken(token: AccessToken): Boolean = token.isExpired
 
-  protected def createGrantHandlerResult[U](authInfo: AuthInfo[U], accessToken: AccessToken) = GrantHandlerResult(
+  protected def createGrantHandlerResult[U, A <: AuthInfo[U]](authInfo: A, accessToken: AccessToken): GrantHandlerResult[U, A] = GrantHandlerResult(
     authInfo,
     "Bearer",
     accessToken.token,
@@ -51,7 +51,7 @@ trait GrantHandler {
 
 class RefreshToken extends GrantHandler {
 
-  override def handleRequest[U](maybeValidatedClientCred: Option[ClientCredential], request: AuthorizationRequest, handler: AuthorizationHandler[U])(implicit ctx: ExecutionContext): Future[GrantHandlerResult[U]] = {
+  override def handleRequest[U, A <: AuthInfo[U]](maybeValidatedClientCred: Option[ClientCredential], request: AuthorizationRequest, handler: AuthorizationHandler[U, A])(implicit ctx: ExecutionContext): Future[GrantHandlerResult[U, A]] = {
     val clientId = maybeValidatedClientCred.getOrElse(throw new InvalidRequest("Client credential is required")).clientId
     val refreshTokenRequest = RefreshTokenRequest(request)
     val refreshToken = refreshTokenRequest.refreshToken
@@ -59,14 +59,14 @@ class RefreshToken extends GrantHandler {
     handler.findAuthInfoByRefreshToken(refreshToken).flatMap { authInfoOption =>
       val authInfo = authInfoOption.getOrElse(throw new InvalidGrant("Authorized information is not found by the refresh token"))
       if (!authInfo.clientId.contains(clientId)) throw new InvalidClient
-      handler.refreshAccessToken(authInfo, refreshToken).map(createGrantHandlerResult(authInfo, _))
+      handler.refreshAccessToken(authInfo, refreshToken).map(createGrantHandlerResult[U, A](authInfo, _))
     }
   }
 }
 
 class Password extends GrantHandler {
 
-  override def handleRequest[U](maybeValidatedClientCred: Option[ClientCredential], request: AuthorizationRequest, handler: AuthorizationHandler[U])(implicit ctx: ExecutionContext): Future[GrantHandlerResult[U]] = {
+  override def handleRequest[U, A <: AuthInfo[U]](maybeValidatedClientCred: Option[ClientCredential], request: AuthorizationRequest, handler: AuthorizationHandler[U, A])(implicit ctx: ExecutionContext): Future[GrantHandlerResult[U, A]] = {
     /**
      * Given that client credentials may be optional, if they are required, they must be fully validated before
      * further processing.
@@ -78,7 +78,7 @@ class Password extends GrantHandler {
       handler.findUser(maybeValidatedClientCred, passwordRequest).flatMap { maybeUser =>
         val user = maybeUser.getOrElse(throw new InvalidGrant("username or password is incorrect"))
         val scope = passwordRequest.scope
-        val authInfo = AuthInfo(user, maybeValidatedClientCred.map(_.clientId), scope, None)
+        val authInfo = handler.createAuthInfo(passwordRequest, user, maybeValidatedClientCred.map(_.clientId), scope, None)
 
         issueAccessToken(handler, authInfo)
       }
@@ -88,14 +88,14 @@ class Password extends GrantHandler {
 
 class ClientCredentials extends GrantHandler {
 
-  override def handleRequest[U](maybeValidatedClientCred: Option[ClientCredential], request: AuthorizationRequest, handler: AuthorizationHandler[U])(implicit ctx: ExecutionContext): Future[GrantHandlerResult[U]] = {
+  override def handleRequest[U, A <: AuthInfo[U]](maybeValidatedClientCred: Option[ClientCredential], request: AuthorizationRequest, handler: AuthorizationHandler[U, A])(implicit ctx: ExecutionContext): Future[GrantHandlerResult[U, A]] = {
     val clientId = maybeValidatedClientCred.getOrElse(throw new InvalidRequest("Client credential is required")).clientId
     val clientCredentialsRequest = ClientCredentialsRequest(request)
     val scope = clientCredentialsRequest.scope
 
     handler.findUser(maybeValidatedClientCred, clientCredentialsRequest).flatMap { optionalUser =>
       val user = optionalUser.getOrElse(throw new InvalidGrant("client_id or client_secret or scope is incorrect"))
-      val authInfo = AuthInfo(user, Some(clientId), scope, None)
+      val authInfo = handler.createAuthInfo(clientCredentialsRequest, user, Some(clientId), scope, None)
 
       issueAccessToken(handler, authInfo)
     }
@@ -105,7 +105,7 @@ class ClientCredentials extends GrantHandler {
 
 class AuthorizationCode extends GrantHandler {
 
-  override def handleRequest[U](maybeValidatedClientCred: Option[ClientCredential], request: AuthorizationRequest, handler: AuthorizationHandler[U])(implicit ctx: ExecutionContext): Future[GrantHandlerResult[U]] = {
+  override def handleRequest[U, A <: AuthInfo[U]](maybeValidatedClientCred: Option[ClientCredential], request: AuthorizationRequest, handler: AuthorizationHandler[U, A])(implicit ctx: ExecutionContext): Future[GrantHandlerResult[U, A]] = {
     val clientId = maybeValidatedClientCred.getOrElse(throw new InvalidRequest("Client credential is required")).clientId
     val authorizationCodeRequest = AuthorizationCodeRequest(request)
     val code = authorizationCodeRequest.code
@@ -124,7 +124,7 @@ class AuthorizationCode extends GrantHandler {
       val f = issueAccessToken(handler, authInfo)
       for {
         accessToken <- f
-        deleteResult <- handler.deleteAuthCode(code)
+        _ <- handler.deleteAuthCode(code)
       } yield accessToken
     }
   }
@@ -133,16 +133,16 @@ class AuthorizationCode extends GrantHandler {
 
 class Implicit extends GrantHandler {
 
-  override def handleRequest[U](maybeValidatedClientCred: Option[ClientCredential], request: AuthorizationRequest, handler: AuthorizationHandler[U])(implicit ctx: ExecutionContext): Future[GrantHandlerResult[U]] = {
+  override def handleRequest[U, A <: AuthInfo[U]](maybeValidatedClientCred: Option[ClientCredential], request: AuthorizationRequest, handler: AuthorizationHandler[U, A])(implicit ctx: ExecutionContext): Future[GrantHandlerResult[U, A]] = {
     val clientId = maybeValidatedClientCred.getOrElse(throw new InvalidRequest("Client credential is required")).clientId
     val implicitRequest = ImplicitRequest(request)
 
     handler.findUser(maybeValidatedClientCred, implicitRequest).flatMap { maybeUser =>
       val user = maybeUser.getOrElse(throw new InvalidGrant("user cannot be authenticated"))
       val scope = implicitRequest.scope
-      val authInfo = AuthInfo(user, Some(clientId), scope, None)
+      val authInfo = handler.createAuthInfo(implicitRequest, user, Some(clientId), scope, None)
 
-      issueAccessToken(handler, authInfo)
+      issueAccessToken[U, A](handler, authInfo)
     }
   }
 
@@ -154,7 +154,7 @@ class Implicit extends GrantHandler {
   /**
    * Implicit grant must not return refresh token
    */
-  protected override def createGrantHandlerResult[U](authInfo: AuthInfo[U], accessToken: AccessToken) =
-    super.createGrantHandlerResult(authInfo, accessToken).copy(refreshToken = None)
+  protected override def createGrantHandlerResult[U, A <: AuthInfo[U]](authInfo: A, accessToken: AccessToken): GrantHandlerResult[U, A] =
+    super.createGrantHandlerResult[U, A](authInfo, accessToken).copy(refreshToken = None)
 
 }

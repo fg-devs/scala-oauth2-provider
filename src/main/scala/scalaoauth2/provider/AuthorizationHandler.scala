@@ -31,6 +31,7 @@ import scala.concurrent.Future
  *   <li>getStoredAccessToken(authInfo)</li>
  *   <li>refreshAccessToken(authInfo, token)</li>
  *   <li>createAccessToken(authInfo)</li>
+ *   <li>createAuthInfo(request, user, clientId, scope, redirectUri)</li>
  * </ul>
  *
  * <h4>Client Credentials Grant</h4>
@@ -40,6 +41,7 @@ import scala.concurrent.Future
  *   <li>getStoredAccessToken(authInfo)</li>
  *   <li>refreshAccessToken(authInfo, token)</li>
  *   <li>createAccessToken(authInfo)</li>
+ *   <li>createAuthInfo(request, user, clientId, scope, redirectUri)</li>
  * </ul>
  *
  * <h4>Implicit Grant</h4>
@@ -48,10 +50,11 @@ import scala.concurrent.Future
  *   <li>findUser(request)</li>
  *   <li>getStoredAccessToken(authInfo)</li>
  *   <li>createAccessToken(authInfo)</li>
+ *   <li>createAuthInfo(request, user, clientId, scope, redirectUri)</li>
  * </ul>
  *
  */
-trait AuthorizationHandler[U] {
+trait AuthorizationHandler[U, A <: AuthInfo[U]] {
 
   /**
    * Verify proper client with parameters for issue an access token.
@@ -80,7 +83,7 @@ trait AuthorizationHandler[U] {
    * @param authInfo This value is already authorized by system.
    * @return Access token returns to client.
    */
-  def createAccessToken(authInfo: AuthInfo[U]): Future[AccessToken]
+  def createAccessToken(authInfo: A): Future[AccessToken]
 
   /**
    * Returns stored access token by authorized information.
@@ -90,7 +93,7 @@ trait AuthorizationHandler[U] {
    * @param authInfo This value is already authorized by system.
    * @return Access token returns to client.
    */
-  def getStoredAccessToken(authInfo: AuthInfo[U]): Future[Option[AccessToken]]
+  def getStoredAccessToken(authInfo: A): Future[Option[AccessToken]]
 
   /**
    * Creates a new access token by refreshToken.
@@ -98,7 +101,7 @@ trait AuthorizationHandler[U] {
    * @param authInfo This value is already authorized by system.
    * @return Access token returns to client.
    */
-  def refreshAccessToken(authInfo: AuthInfo[U], refreshToken: String): Future[AccessToken]
+  def refreshAccessToken(authInfo: A, refreshToken: String): Future[AccessToken]
 
   /**
    * Find authorized information by authorization code.
@@ -108,7 +111,7 @@ trait AuthorizationHandler[U] {
    * @param code Client sends authorization code which is registered by system.
    * @return Return authorized information that matched the code.
    */
-  def findAuthInfoByCode(code: String): Future[Option[AuthInfo[U]]]
+  def findAuthInfoByCode(code: String): Future[Option[A]]
 
   /**
    * Deletes an authorization code.
@@ -130,6 +133,20 @@ trait AuthorizationHandler[U] {
    * @param refreshToken Client sends refresh token which is created by system.
    * @return Return authorized information that matched the refresh token.
    */
-  def findAuthInfoByRefreshToken(refreshToken: String): Future[Option[AuthInfo[U]]]
+  def findAuthInfoByRefreshToken(refreshToken: String): Future[Option[A]]
+
+  /**
+   * Creates authorized information.
+   *
+   * Client credential, Password and Implicit Grant call this method.
+   *
+   * @param request Request sent by client
+   * @param user Authorized user
+   * @param clientId Authorized clientId
+   * @param scope Authorized scope
+   * @param redirectUri Authorized redirectUri
+   * @return Return authorized information
+   */
+  def createAuthInfo(request: AuthorizationRequest, user: U, clientId: Option[String], scope: Option[String], redirectUri: Option[String]): A
 
 }

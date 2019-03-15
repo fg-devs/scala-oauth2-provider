@@ -12,7 +12,7 @@ import scala.concurrent.Future
  *   <li>findAuthInfoByAccessToken(token)</li>
  * </ul>
  */
-trait ProtectedResourceHandler[+U] {
+trait ProtectedResourceHandler[U, A <: AuthInfo[U]] {
 
   /**
    * Find authorized information by access token.
@@ -20,7 +20,7 @@ trait ProtectedResourceHandler[+U] {
    * @param accessToken This value is AccessToken.
    * @return Return authorized information if the parameter is available.
    */
-  def findAuthInfoByAccessToken(accessToken: AccessToken): Future[Option[AuthInfo[U]]]
+  def findAuthInfoByAccessToken(accessToken: AccessToken): Future[Option[A]]
 
   /**
    * Find AccessToken object by access token code.

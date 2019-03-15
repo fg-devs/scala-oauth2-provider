@@ -17,10 +17,10 @@ class AuthorizationCodeSpec extends FlatSpec with ScalaFutures with OptionValues
     val clientCred = request.parseClientCredential.fold[Option[ClientCredential]](None)(_.fold(_ => None, c => Some(c)))
     val f = authorizationCode.handleRequest(clientCred, request, new MockDataHandler() {
 
-      override def findAuthInfoByCode(code: String): Future[Option[AuthInfo[User]]] = Future.successful(Some(
+      override def findAuthInfoByCode(code: String): Future[Option[DefaultAuthInfo[User]]] = Future.successful(Some(
         AuthInfo(user = MockUser(10000, "username"), clientId = Some("clientId1"), scope = Some("all"), redirectUri = Some("http://example.com/"))))
 
-      override def createAccessToken(authInfo: AuthInfo[User]): Future[AccessToken] = Future.successful(AccessToken("token1", Some("refreshToken1"), Some("all"), Some(3600), new java.util.Date()))
+      override def createAccessToken(authInfo: DefaultAuthInfo[User]): Future[AccessToken] = Future.successful(AccessToken("token1", Some("refreshToken1"), Some("all"), Some(3600), new java.util.Date()))
 
       override def deleteAuthCode(code: String): Future[Unit] = {
         Thread.sleep(300)
@@ -45,10 +45,10 @@ class AuthorizationCodeSpec extends FlatSpec with ScalaFutures with OptionValues
     val clientCred = request.parseClientCredential.fold[Option[ClientCredential]](None)(_.fold(_ => None, c => Some(c)))
     val f = authorizationCode.handleRequest(clientCred, request, new MockDataHandler() {
 
-      override def findAuthInfoByCode(code: String): Future[Option[AuthInfo[MockUser]]] = Future.successful(Some(
+      override def findAuthInfoByCode(code: String): Future[Option[DefaultAuthInfo[MockUser]]] = Future.successful(Some(
         AuthInfo(user = MockUser(10000, "username"), clientId = Some("clientId1"), scope = Some("all"), redirectUri = None)))
 
-      override def createAccessToken(authInfo: AuthInfo[User]): Future[AccessToken] = Future.successful(AccessToken("token1", Some("refreshToken1"), Some("all"), Some(3600), new java.util.Date()))
+      override def createAccessToken(authInfo: DefaultAuthInfo[User]): Future[AccessToken] = Future.successful(AccessToken("token1", Some("refreshToken1"), Some("all"), Some(3600), new java.util.Date()))
     })
 
     whenReady(f) { result =>
@@ -66,10 +66,10 @@ class AuthorizationCodeSpec extends FlatSpec with ScalaFutures with OptionValues
     val clientCred = request.parseClientCredential.fold[Option[ClientCredential]](None)(_.fold(_ => None, c => Some(c)))
     val f = authorizationCode.handleRequest(clientCred, request, new MockDataHandler() {
 
-      override def findAuthInfoByCode(code: String): Future[Option[AuthInfo[User]]] = Future.successful(Some(
+      override def findAuthInfoByCode(code: String): Future[Option[DefaultAuthInfo[User]]] = Future.successful(Some(
         AuthInfo(user = MockUser(10000, "username"), clientId = Some("clientId1"), scope = Some("all"), redirectUri = Some("http://example.com/"))))
 
-      override def createAccessToken(authInfo: AuthInfo[User]): Future[AccessToken] = Future.successful(AccessToken("token1", Some("refreshToken1"), Some("all"), Some(3600), new java.util.Date()))
+      override def createAccessToken(authInfo: DefaultAuthInfo[User]): Future[AccessToken] = Future.successful(AccessToken("token1", Some("refreshToken1"), Some("all"), Some(3600), new java.util.Date()))
 
       override def deleteAuthCode(code: String): Future[Unit] = {
         Future.failed(new Exception())

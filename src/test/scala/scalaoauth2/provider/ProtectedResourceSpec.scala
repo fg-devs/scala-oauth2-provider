@@ -11,12 +11,12 @@ import scala.concurrent.Future
 
 class ProtectedResourceSpec extends FlatSpec with ScalaFutures {
 
-  def successfulProtectedResourceHandler() = new ProtectedResourceHandler[User] {
+  def successfulProtectedResourceHandler() = new ProtectedResourceHandler[User, DefaultAuthInfo[User]] {
 
     override def findAccessToken(token: String): Future[Option[AccessToken]] = Future.successful(Some(AccessToken("token1", Some("refreshToken1"), Some("all"), Some(3600), new Date())))
 
-    override def findAuthInfoByAccessToken(accessToken: AccessToken): Future[Option[AuthInfo[User]]] = Future.successful(Some(
-      AuthInfo(user = MockUser(10000, "username"), clientId = Some("clientId1"), scope = Some("all"), redirectUri = None)))
+    override def findAuthInfoByAccessToken(accessToken: AccessToken): Future[Option[DefaultAuthInfo[User]]] = Future.successful(Some(
+      DefaultAuthInfo(user = MockUser(10000, "username"), clientId = Some("clientId1"), scope = Some("all"), redirectUri = None)))
 
   }
 
@@ -43,12 +43,12 @@ class ProtectedResourceSpec extends FlatSpec with ScalaFutures {
       Map("Authorization" -> Seq("OAuth token1")),
       Map("username" -> Seq("user"), "password" -> Seq("pass"), "scope" -> Seq("all")))
 
-    val dataHandler = new ProtectedResourceHandler[User] {
+    val dataHandler = new ProtectedResourceHandler[User, DefaultAuthInfo[User]] {
 
       override def findAccessToken(token: String): Future[Option[AccessToken]] = Future.successful(Some(AccessToken("token1", Some("refreshToken1"), Some("all"), Some(3600), new Date(new Date().getTime() - 4000 * 1000))))
 
-      override def findAuthInfoByAccessToken(accessToken: AccessToken): Future[Option[AuthInfo[MockUser]]] = Future.successful(Some(
-        AuthInfo(user = MockUser(10000, "username"), clientId = Some("clientId1"), scope = Some("all"), redirectUri = None)))
+      override def findAuthInfoByAccessToken(accessToken: AccessToken): Future[Option[DefaultAuthInfo[MockUser]]] = Future.successful(Some(
+        DefaultAuthInfo(user = MockUser(10000, "username"), clientId = Some("clientId1"), scope = Some("all"), redirectUri = None)))
 
     }
 
@@ -88,11 +88,11 @@ class ProtectedResourceSpec extends FlatSpec with ScalaFutures {
       Map("Authorization" -> Seq("OAuth token1")),
       Map("username" -> Seq("user"), "password" -> Seq("pass"), "scope" -> Seq("all")))
 
-    val dataHandler = new ProtectedResourceHandler[User] {
+    val dataHandler = new ProtectedResourceHandler[User, DefaultAuthInfo[User]] {
 
       override def findAccessToken(token: String): Future[Option[AccessToken]] = Future.successful(None)
 
-      override def findAuthInfoByAccessToken(accessToken: AccessToken): Future[Option[AuthInfo[MockUser]]] = Future.successful(None)
+      override def findAuthInfoByAccessToken(accessToken: AccessToken): Future[Option[DefaultAuthInfo[MockUser]]] = Future.successful(None)
 
     }
 
@@ -114,11 +114,11 @@ class ProtectedResourceSpec extends FlatSpec with ScalaFutures {
       Map("Authorization" -> Seq("OAuth token1")),
       Map("username" -> Seq("user"), "password" -> Seq("pass"), "scope" -> Seq("all")))
 
-    val dataHandler = new ProtectedResourceHandler[User] {
+    val dataHandler = new ProtectedResourceHandler[User, DefaultAuthInfo[User]] {
 
       override def findAccessToken(token: String): Future[Option[AccessToken]] = Future.successful(Some(AccessToken("token1", Some("refreshToken1"), Some("all"), Some(3600), new Date())))
 
-      override def findAuthInfoByAccessToken(accessToken: AccessToken): Future[Option[AuthInfo[MockUser]]] = Future.successful(None)
+      override def findAuthInfoByAccessToken(accessToken: AccessToken): Future[Option[DefaultAuthInfo[MockUser]]] = Future.successful(None)
 
     }
 
